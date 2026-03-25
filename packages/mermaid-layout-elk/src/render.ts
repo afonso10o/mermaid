@@ -95,6 +95,11 @@ export const render = async (
   const nodeDb: Record<string, any> = {};
   const clusterDb: Record<string, any> = {};
 
+  const getSubGraphTitleTotalMargin = (cfg: ReturnType<typeof getConfig>) => {
+    const top = cfg.flowchart?.subGraphTitleMargin?.top ?? 0;
+    const bottom = cfg.flowchart?.subGraphTitleMargin?.bottom ?? 0;
+    return top + bottom;
+  };
   const addVertex = async (
     nodeEl: SVGGroup,
     graph: { children: NodeWithVertex[] },
@@ -148,10 +153,11 @@ export const render = async (
       if (node.label) {
         // @ts-ignore TODO: fix this
         const { shapeSvg, bbox } = await labelHelper(nodeEl, node, undefined, true);
+        const subGraphTitleTotalMargin = getSubGraphTitleTotalMargin(config);
         labelData.width = bbox.width;
         labelData.wrappingWidth = config.flowchart!.wrappingWidth;
         // Give some padding for elk
-        labelData.height = bbox.height - 2;
+        labelData.height = bbox.height - 2 + subGraphTitleTotalMargin;
         labelData.labelNode = shapeSvg.node();
         // We need the label hight to be able to size the subgraph;
         shapeSvg.remove();
@@ -1096,8 +1102,10 @@ export const render = async (
         );
         log.info('APA12 edge points after insert', JSON.stringify(edge.points));
 
+        const subGraphTitleTotalMargin = getSubGraphTitleTotalMargin(getConfig());
         edge.x = edge.labels[0].x + offset.x + edge.labels[0].width / 2;
-        edge.y = edge.labels[0].y + offset.y + edge.labels[0].height / 2;
+        edge.y =
+          edge.labels[0].y + offset.y + edge.labels[0].height / 2 - subGraphTitleTotalMargin / 2;
         positionEdgeLabel(edge, paths);
       }
     }
