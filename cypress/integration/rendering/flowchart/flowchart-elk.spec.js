@@ -1158,4 +1158,88 @@ flowchart TD
       {}
     );
   });
+
+  it('7341: subGraphTitleMargin=0 should show no extra spacing around subgraph titles', () => {
+    imgSnapshotTest(
+      `---
+config:
+  layout: elk
+---
+flowchart TD
+    subgraph Group1["Group One"]
+        A --> B
+    end
+    subgraph Group2["Group Two"]
+        C --> D
+    end
+    Group1 --> Group2
+`,
+      { flowchart: { subGraphTitleMargin: { top: 0, bottom: 0 } } }
+    );
+  });
+
+  it('7341: subGraphTitleMargin=30 should show large spacing around subgraph titles', () => {
+    imgSnapshotTest(
+      `---
+config:
+  layout: elk
+---
+flowchart TD
+    subgraph Group1["Group One"]
+        A --> B
+    end
+    subgraph Group2["Group Two"]
+        C --> D
+    end
+    Group1 --> Group2
+`,
+      { flowchart: { subGraphTitleMargin: { top: 30, bottom: 30 } } }
+    );
+  });
+
+  it('7341: edge labels should not be displaced downward when subGraphTitleMargin is set', () => {
+    // Regression test: with top+bottom margin, edges.js adds totalMargin/2 to the label Y.
+    // The ELK renderer must pre-subtract that same amount so the net displacement is zero.
+    renderGraph(
+      `---
+config:
+  layout: elk
+  flowchart:
+    subGraphTitleMargin:
+      top: 10
+      bottom: 10
+---
+flowchart LR
+  subgraph subgraph1
+    direction LR
+    n1 -- my --- n2
+  end
+`,
+      {}
+    );
+    cy.get('svg').should((svg) => {
+      // The edge label "my" and the nodes are all inside the subgraph.
+      // In an LR layout they share roughly the same vertical center.
+      // Before the fix the label was pushed down by (top+bottom)/2 = 10px.
+      const edgeLabel = svg[0].querySelector('.edgeLabel');
+      const nodeEls = svg[0].querySelectorAll('.node');
+      expect(edgeLabel).to.not.equal(null);
+      expect(nodeEls.length).to.be.greaterThan(0);
+
+      const labelRect = edgeLabel.getBoundingClientRect();
+      const labelCenterY = (labelRect.top + labelRect.bottom) / 2;
+
+      // Average center Y of all nodes in the diagram
+      let sumY = 0;
+      nodeEls.forEach((n) => {
+        const r = n.getBoundingClientRect();
+        sumY += (r.top + r.bottom) / 2;
+      });
+      const nodesCenterY = sumY / nodeEls.length;
+
+      // The label should be within 15px of the nodes' vertical center.
+      // A regression would push it ~10px further down.
+      expect(Math.abs(labelCenterY - nodesCenterY)).to.be.lessThan(15);
+    });
+  });
 });
